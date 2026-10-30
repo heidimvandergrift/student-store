@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Store Tracker</title>
+<style>
+:root{
+  --bg:#EDF2F6; --card:#FFFFFF; --ink:#12263A; --muted:#566879; --line:#D3DDE5;
+  --blue:#1F4FD8; --blue-d:#163CAD; --blue-soft:#E4EBFC;
+  --tag:#FFC933; --tag-ink:#4A3600;
+  --green:#157A52; --green-soft:#DDF3E8;
+  --red:#C0302A; --red-soft:#FBE3E1;
+  --warn-soft:#FFF0D1; --warn-line:#E3A012;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:17px/1.4 "Avenir Next","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.wrap{max-width:780px;margin:0 auto;padding:0 14px 40px}
+.demo{background:var(--tag);color:var(--tag-ink);text-align:center;padding:8px 12px;font-size:15px;font-weight:600}
+.errbar{background:var(--red);color:#fff;padding:10px 14px;text-align:center}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:10px;padding:16px 0 10px}
+.top h1{flex:1;margin:0;font-size:26px;line-height:1.15;letter-spacing:-.01em;font-weight:800}
+.iconbtn{border:0;background:var(--card);border:2px solid var(--line);border-radius:12px;min-height:44px;padding:0 14px;cursor:pointer;font-weight:600}
+.iconbtn:hover{border-color:var(--blue)}
+
+/* buttons */
+.btn{border:0;border-radius:12px;min-height:48px;padding:0 20px;font-weight:700;cursor:pointer;background:var(--blue-soft);color:var(--blue-d)}
+.btn:hover{filter:brightness(.97)}
+.btn.primary{background:var(--blue);color:#fff}
+.btn.primary:hover{background:var(--blue-d);filter:none}
+.btn.danger{background:var(--red);color:#fff}
+.btn.ghost{background:transparent;border:2px solid var(--line);color:var(--ink)}
+.btn.big{min-height:56px;font-size:19px;padding:0 26px}
+.btn.small{min-height:38px;padding:0 12px;font-size:15px;border-radius:10px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.btnrow.end{justify-content:flex-end}
+
+/* home tiles */
+.tile{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;width:100%;border:0;border-radius:18px;padding:20px 22px;cursor:pointer;
+  background:var(--card);box-shadow:0 0 0 2px var(--line) inset}
+.tile b{font-size:21px;line-height:1.2}
+.tile span{color:var(--muted);font-size:16px}
+.tile:hover{box-shadow:0 0 0 3px var(--blue) inset}
+.tile.main{background:var(--blue);color:#fff;box-shadow:none;padding:26px 24px}
+.tile.main b{font-size:28px}
+.tile.main span{color:#DCE6FF}
+.tile.main:hover{background:var(--blue-d)}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+@media(max-width:560px){.tiles{grid-template-columns:1fr}}
+
+.panel{background:var(--card);border-radius:16px;padding:16px 18px;margin-top:16px;box-shadow:0 0 0 2px var(--line) inset}
+.panel h2{margin:0 0 4px;font-size:19px}
+.panel p{margin:4px 0 0;color:var(--muted)}
+.hint{color:var(--muted);font-size:15px;margin:4px 0}
+.empty{color:var(--muted);padding:6px 0}
+
+.evt{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.evt:first-of-type{border-top:0}
+.evt .t{flex:1}
+.evt .q{font-weight:800;min-width:46px;font-variant-numeric:tabular-nums}
+.evt .q.in{color:var(--green)} .evt .q.out{color:var(--red)}
+.evt small{display:block;color:var(--muted)}
+.linkbtn{background:none;border:0;color:var(--blue-d);font-weight:700;cursor:pointer;text-decoration:underline;padding:8px 4px;min-height:44px}
+
+/* forms */
+label.f{display:block;font-weight:700;margin:14px 0 6px}
+input[type=text],input[type=password],input[type=date],input[type=number],select{width:100%;min-height:50px;border:2px solid var(--line);border-radius:12px;padding:0 12px;background:#fff}
+input:focus,select:focus{border-color:var(--blue);outline:none;box-shadow:0 0 0 3px var(--blue-soft)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:2px solid var(--line);background:#fff;border-radius:999px;min-height:46px;padding:0 18px;font-weight:700;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--blue);border-color:var(--blue);color:#fff}
+
+/* item rows with steppers */
+.cat{margin:22px 0 6px;font-size:18px;font-weight:800;color:var(--muted);letter-spacing:.01em}
+.row{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:14px;padding:10px 12px;margin-top:8px;box-shadow:0 0 0 2px var(--line) inset}
+.row.filled{box-shadow:0 0 0 2px #BFD0F6 inset}
+.row.warn{background:var(--warn-soft);box-shadow:0 0 0 2px var(--warn-line) inset}
+.rinfo{flex:1;min-width:0;overflow-wrap:anywhere}
+.rname{font-weight:700;font-size:18px;line-height:1.2}
+.rmeta{display:flex;gap:10px;align-items:center;margin-top:4px;flex-wrap:wrap}
+.price{background:var(--tag);color:var(--tag-ink);font-weight:800;font-size:14px;border-radius:6px 12px 12px 6px;padding:1px 10px 1px 8px}
+.sub{color:var(--muted);font-size:15px}
+.warnmsg{color:#7A4B00;font-weight:600;font-size:15px;margin-top:4px}
+.warnmsg:empty{display:none}
+.pill{display:inline-block;margin-left:8px;font-size:13px;font-weight:700;background:var(--warn-soft);color:#7A4B00;border-radius:999px;padding:1px 9px;vertical-align:middle}
+.pill.green{background:var(--green-soft);color:var(--green)} .pill.grey{background:#E6ECF1;color:var(--muted)}
+.stepper{display:flex;align-items:center;gap:6px;flex:none}
+.stepper button{flex:none;width:50px;height:54px;border-radius:12px;border:0;background:var(--blue-soft);color:var(--blue-d);font-size:28px;font-weight:700;cursor:pointer;line-height:1}
+.stepper button:active{background:#C9D6F8}
+.stepper input.qty{width:84px;min-height:54px;height:54px;padding:0;flex:none;text-align:center;font-size:28px;font-weight:800;border:2px solid var(--line);border-radius:12px;background:#fff;font-variant-numeric:tabular-nums}
+.qty:focus{border-color:var(--blue);outline:none;box-shadow:0 0 0 3px var(--blue-soft)}
+.money{font-size:24px;font-weight:800;text-align:left;min-height:56px}
+
+.footbar{position:sticky;bottom:0;background:var(--bg);padding:12px 0 14px;margin-top:18px;border-top:2px solid var(--line);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.footbar .prog{flex:1;min-width:160px}
+.meter{height:10px;border-radius:99px;background:#D8E1E9;overflow:hidden;margin-top:6px}
+.meter i{display:block;height:100%;background:var(--green);width:0;transition:width .2s}
+
+/* tables */
+.scroll{overflow-x:auto;margin-top:8px;border-radius:12px;background:var(--card);box-shadow:0 0 0 2px var(--line) inset}
+.tbl{width:100%;border-collapse:collapse;font-size:15.5px;font-variant-numeric:tabular-nums}
+.tbl th,.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.tbl th:first-child,.tbl td:first-child{text-align:left;white-space:normal;min-width:150px}
+.tbl th{font-size:14px;color:var(--muted);font-weight:700;background:#F6F9FB;position:sticky;top:0}
+.tbl tr.neg td{background:var(--red-soft)}
+.tbl tr.total td{font-weight:800;border-top:2px solid var(--ink);background:#F6F9FB}
+.tbl tr.click{cursor:pointer} .tbl tr.click:hover td{background:var(--blue-soft)}
+.good{color:var(--green);font-weight:800} .bad{color:var(--red);font-weight:800} .over{color:var(--blue-d);font-weight:800}
+
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+@media(max-width:560px){.cards{grid-template-columns:1fr}}
+.stat{background:var(--card);border-radius:14px;padding:14px 16px;box-shadow:0 0 0 2px var(--line) inset}
+.stat small{display:block;color:var(--muted);font-weight:600}
+.stat b{font-size:28px;font-variant-numeric:tabular-nums}
+
+.sumbox{margin-top:14px;border-radius:14px;background:var(--card);box-shadow:0 0 0 2px var(--line) inset;padding:6px 16px}
+.sumrow{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.sumrow:last-child{border-bottom:0}
+.sumrow.big{font-size:20px;font-weight:800}
+
+.tabs{display:flex;gap:8px;margin:6px 0 4px;flex-wrap:wrap}
+.tabs .chip{min-height:44px}
+
+.alert{border-radius:12px;padding:12px 14px;margin-top:12px;background:var(--warn-soft);box-shadow:0 0 0 2px var(--warn-line) inset}
+.alert.red{background:var(--red-soft);box-shadow:0 0 0 2px var(--red) inset}
+.alert.green{background:var(--green-soft);box-shadow:0 0 0 2px var(--green) inset}
+
+/* modal + toast */
+.modalback{position:fixed;inset:0;background:rgba(18,38,58,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50;overflow:auto}
+.modal{background:#fff;border-radius:18px;padding:22px;max-width:460px;width:100%;max-height:92vh;overflow:auto}
+.modal h3{margin:0 0 4px;font-size:21px}
+.modal .msg{margin:0;font-size:18px}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:12px;padding:12px 20px;font-weight:600;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
+#toast.show{opacity:1}
+.center{text-align:center;padding:60px 10px;color:var(--muted)}
+.big-ok{font-size:54px;line-height:1}
+@media(max-width:400px){.stepper button{width:44px}.stepper input.qty{width:68px}.row{gap:8px;padding:10px 10px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+/* =====================================================================
+   1. SETTINGS  — paste your Firebase config below (see SETUP-GUIDE.md).
+   Leave it as-is to try the app in PRACTICE MODE (saved only in this browser).
+   ===================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCDa5O7kW_IBd-hwqnnihC2DDdDb7d9qo0",
+  authDomain: "student-store-inventory.firebaseapp.com",
+  projectId: "student-store-inventory",
+  storageBucket: "student-store-inventory.firebasestorage.app",
+  messagingSenderId: "992655726224",
+  appId: "1:992655726224:web:e5682a8f46792fed706a15"
+};
+const LOGIN_DOMAIN = "myabcusd.org";   // students type just "ross.asb"; this is added behind the scenes
+const FIREBASE_VERSION = "10.12.2";
+const STORE_NAME = "Student Store Tracker";
+
+const DEMO = !FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.startsWith("PASTE");
+
+/* Starting item list (loaded one time, on first run). Edit anytime in Teacher area > Items. */
+const SEED = [
+  ["Chips","Lays Limon",2],["Chips","Lays BBQ",2],["Chips","Hot Cheetos",2],["Chips","Cheetos",2],["Chips","Ruffles",2],["Chips","Takis",1],
+  ["Candy","Skittles",2],["Candy","Sour Skittles",2],["Candy","Sour Patch Kids",2],["Candy","Sour Patch Watermelon",2],
+  ["Candy","Sour Punch Red",2],["Candy","Sour Punch Blue",2],["Candy","Gushers",1],
+  ["Frozen","Ice Cream Sandwich",1],["Frozen","Otter Pop",0.5],
+  ["Drinks","Dr. Pepper",2],["Drinks","Sprite",2],["Drinks","Coke",2],
+  ["Drinks","Arizona Fruit Punch",2],["Drinks","Arizona Watermelon",2],["Drinks","Arizona Mango",2],["Drinks","Arizona Green Tea",2],
+  ["Drinks","Arizona Half and Half",2],["Drinks","Arizona Lemon Tea",2],["Drinks","Arizona Peach Tea",2],
+  ["Drinks","Gatorade Blue",2],["Drinks","Gatorade Red",2],["Drinks","Gatorade Yellow",2],["Drinks","Water",1]
+];
+
+const REASONS = { delivery:"delivery", newitem:"new item stock", lost:"lost", damaged:"damaged", giveaway:"given away", other:"other" };
+
+/* =====================================================================
+   2. SMALL HELPERS
+   ===================================================================== */
+const COLLS = ["items","events","sessions","settings"];
+const state = { items:[], events:[], sessions:[], settings:[], ready:false, user:null, error:null };
+
+const round2 = n => Math.round(n*100)/100;
+const money = n => (n<0?"-":"") + "$" + Math.abs(n).toFixed(2);
+const pad = n => String(n).padStart(2,"0");
+const todayStr = () => { const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const parseD = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
+const fmtDate = (s,long) => parseD(s).toLocaleDateString("en-US", long ? {weekday:"short",month:"short",day:"numeric",year:"numeric"} : {month:"short",day:"numeric"});
+const sum = (a,f) => a.reduce((t,x)=>t+f(x),0);
+const newId = () => Math.random().toString(36).slice(2,8) + Date.now().toString(36);
+const parseMoney = s => { const t=String(s).replace(/[$,\s]/g,""); return /^\d*\.?\d{0,2}$/.test(t) && t!=="" && t!=="." ? Number(t) : NaN; };
+
+function el(tag, props, ...kids){
+  const e = document.createElement(tag);
+  for (const [k,v] of Object.entries(props||{})){
+    if (v===false || v==null) continue;
+    if (k==="class") e.className=v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k==="value"||k==="checked"||k==="disabled") e[k]=v;
+    else e.setAttribute(k, v===true?"":v);
+  }
+  for (const kid of kids.flat(Infinity)){
+    if (kid==null || kid===false) continue;
+    e.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  }
+  return e;
+}
+
+let toastTimer;
+function toast(msg){
+  const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2800);
+}
+
+function modal(content){
+  const back = el("div",{class:"modalback"}, el("div",{class:"modal",role:"dialog","aria-modal":"true"}, content));
+  const close = () => back.remove();
+  back.addEventListener("click", e => { if (e.target===back) close(); });
+  document.body.append(back);
+  const first = back.querySelector("input,select,button"); if (first) first.focus();
+  return close;
+}
+function confirmDialog(msg, okText="Yes", danger=false){
+  return new Promise(res=>{
+    const close = modal(el("div",{},
+      el("p",{class:"msg"},msg),
+      el("div",{class:"btnrow end"},
+        el("button",{class:"btn ghost",onclick:()=>{close();res(false)}},"Cancel"),
+        el("button",{class:"btn "+(danger?"danger":"primary"),onclick:()=>{close();res(true)}},okText))));
+  });
+}
+
+async function hashPin(s){
+  const text = "store:"+s;
+  if (window.crypto && crypto.subtle){
+    const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+    return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+  }
+  let h=5381; for (const c of text) h=((h<<5)+h+c.charCodeAt(0))|0; return "x"+h;
+}
+
+/* =====================================================================
+   3. DATA LAYER  (Firebase, or practice mode in this browser)
+   ===================================================================== */
+function demoStore(h){
+  const KEY="studentStoreTracker.practice.v1";
+  let data; try{ data=JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+  data = data || {items:{},events:{},sessions:{},settings:{}};
+  const save=()=>{ try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){} };
+  const snap=()=>{ const out={}; for(const c of COLLS) out[c]=Object.entries(data[c]).map(([id,v])=>({id,...v})); h.onData(out,true); };
+  return {
+    async init(){ h.onUser({demo:true}); snap(); },
+    async commit(ops){
+      for(const o of ops){
+        if(o.op==="del") delete data[o.coll][o.id];
+        else data[o.coll][o.id]={...(data[o.coll][o.id]||{}),...o.data};
+      }
+      save(); snap();
+    },
+    async login(){}, async logout(){},
+    reset(){ data={items:{},events:{},sessions:{},settings:{}}; save(); snap(); }
+  };
+}
+
+async function firebaseStore(h){
+  const base=`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/`;
+  const [appM,authM,fs] = await Promise.all([
+    import(base+"firebase-app.js"), import(base+"firebase-auth.js"), import(base+"firebase-firestore.js")]);
+  const app=appM.initializeApp(FIREBASE_CONFIG);
+  const auth=authM.getAuth(app);
+  const db=fs.getFirestore(app);
+  let unsubs=[], loaded={}, fromServer={}; const cache={};
+  function subscribe(){
+    COLLS.forEach(c=>{
+      unsubs.push(fs.onSnapshot(fs.collection(db,c), snap=>{
+        cache[c]=snap.docs.map(d=>({id:d.id,...d.data()}));
+        fromServer[c]=!snap.metadata.fromCache;
+        loaded[c]=true;
+        if(COLLS.every(k=>loaded[k])) h.onData(cache, fromServer.settings===true);
+      }, err=>h.onError(err)));
+    });
+  }
+  return {
+    async init(){
+      authM.onAuthStateChanged(auth, u=>{
+        unsubs.forEach(f=>f()); unsubs=[]; loaded={}; fromServer={};
+        h.onUser(u||null);
+        if(u) subscribe();
+      });
+    },
+    async login(username,pw){
+      const email = username.includes("@") ? username : `${username}@${LOGIN_DOMAIN}`;
+      return authM.signInWithEmailAndPassword(auth,email,pw);
+    },
+    async logout(){ return authM.signOut(auth); },
+    async commit(ops){
+      const b=fs.writeBatch(db);
+      for(const o of ops){
+        const ref=fs.doc(db,o.coll,o.id);
+        if(o.op==="del") b.delete(ref); else b.set(ref,o.data,{merge:true});
+      }
+      await b.commit();
+    }
+  };
+}
+
+let store, seeding=false;
+function onData(d, fresh){
+  for(const c of COLLS) state[c]=d[c].slice();
+  state.ready=true; state.error=null;
+  maybeSeed(fresh);
+  if (LIVE_SCREENS.includes(screen.name)) render();
+}
+function maybeSeed(fresh){
+  if(seeding || !fresh || state.settings.some(s=>s.id==="main")) return;
+  seeding=true;
+  const ops=SEED.map((s,i)=>({op:"set",coll:"items",id:"seed-"+pad(i+1),
+    data:{category:s[0],name:s[1],price:s[2],status:"active",sort:(i+1)*10,createdAt:Date.now()}}));
+  ops.push({op:"set",coll:"settings",id:"main",data:{couponValue:1,createdAt:Date.now()}});
+  store.commit(ops).catch(e=>{seeding=false; state.error="Couldn't set up the starting items: "+e.message; render();});
+}
+
+/* =====================================================================
+   4. BUSINESS LOGIC
+   ===================================================================== */
+const bySort=(a,b)=>(a.sort??0)-(b.sort??0)||a.name.localeCompare(b.name);
+const activeItems=()=>state.items.filter(i=>i.status!=="discontinued").sort(bySort);
+const sortedSessions=()=>[...state.sessions].sort((a,b)=>a.date.localeCompare(b.date)||a.createdAt-b.createdAt);
+const pending=()=>state.events.filter(e=>!e.sessionId).sort((a,b)=>a.createdAt-b.createdAt);
+const settings=()=>state.settings.find(s=>s.id==="main")||{};
+const couponValue=()=>typeof settings().couponValue==="number"?settings().couponValue:1;
+
+function groupItems(items){
+  const m=new Map();
+  [...items].sort(bySort).forEach(i=>{const c=i.category||"Other"; if(!m.has(c)) m.set(c,[]); m.get(c).push(i);});
+  return [...m.entries()];
+}
+const lastSession=()=>{const s=sortedSessions(); return s[s.length-1]||null;};
+const prevCount=(last,id)=>last ? (last.lines.find(l=>l.itemId===id)?.counted ?? 0) : null;
+
+function expectedStock(item){
+  const last=lastSession(); if(!last) return null;
+  const ev=pending().filter(e=>e.itemId===item.id);
+  return prevCount(last,item.id)
+    + sum(ev.filter(e=>e.type==="receive"),e=>e.qty)
+    - sum(ev.filter(e=>e.type==="writeoff"),e=>e.qty);
+}
+
+/* Sold = last count + received - written off - this count */
+function computeLines(counts){
+  const last=lastSession(), pend=pending();
+  return activeItems().map(it=>{
+    const prev=prevCount(last,it.id);
+    const ev=pend.filter(e=>e.itemId===it.id);
+    const received=sum(ev.filter(e=>e.type==="receive"),e=>e.qty);
+    const w=r=>sum(ev.filter(e=>e.type==="writeoff"&&e.reason===r),e=>e.qty);
+    const lost=w("lost"), damaged=w("damaged"), giveaway=w("giveaway"), other=w("other");
+    const counted=counts[it.id];
+    const sold = last ? prev+received-lost-damaged-giveaway-other-counted : null;
+    return {itemId:it.id,name:it.name,price:it.price,prev,received,lost,damaged,giveaway,other,counted,sold,
+            gross: sold==null?0:round2(sold*it.price)};
+  });
+}
+
+/* In-progress count is kept on this device so a refresh doesn't lose it */
+let draft=null; try{ draft=JSON.parse(localStorage.getItem("storeCountDraft")); }catch(e){}
+const saveDraft=()=>{ try{localStorage.setItem("storeCountDraft",JSON.stringify(draft));}catch(e){} };
+const ensureDraft=()=>{ if(!draft) draft={date:todayStr(),counts:{},cash:"",coupons:"",notes:""}; };
+const clearDraft=()=>{ draft=null; try{localStorage.removeItem("storeCountDraft");}catch(e){} };
+
+/* =====================================================================
+   5. SCREENS
+   ===================================================================== */
+const root=document.getElementById("app");
+let screen={name:"home"};
+const LIVE_SCREENS=["home","teacher","done","loading"];
+const teacher={until:0,tab:"history",fromId:null,toId:null};
+const isUnlocked=()=>Date.now()<teacher.until;
+
+function go(name,params){ screen={name,...(params||{})}; render(); window.scrollTo(0,0); }
+const redirect=name=>{ queueMicrotask(()=>go(name)); return el("div"); };
+
+function render(){
+  root.replaceChildren();
+  if(DEMO) root.append(el("div",{class:"demo"},"Practice mode: nothing is saved online. Numbers stay only in this browser."));
+  if(state.error) root.append(el("div",{class:"errbar"},state.error));
+  let node;
+  if(!state.user) node=screenLogin();
+  else if(!state.ready) node=el("div",{class:"wrap"},el("div",{class:"center"},"Loading… the first load can take a few seconds."));
+  else{
+    const fn={home:screenHome,count:screenCount,review:screenReview,done:screenDone,
+              stock:()=>screenEntry("stock"),writeoff:()=>screenEntry("writeoff"),teacher:screenTeacher}[screen.name];
+    node=fn();
+  }
+  root.append(node);
+}
+
+function topBar(title,back,right){
+  return el("div",{class:"top"},
+    back ? el("button",{class:"iconbtn",onclick:()=>{ if(typeof back==="function") back(); else go("home"); }},"‹ Back") : null,
+    el("h1",{},title), right||null);
+}
+
+/* ---------- Login ---------- */
+function screenLogin(){
+  const u=el("input",{type:"text",autocomplete:"username",autocapitalize:"none",autocorrect:"off"});
+  const p=el("input",{type:"password",autocomplete:"current-password"});
+  const err=el("div",{class:"alert red",style:"display:none"});
+  const form=el("form",{onsubmit:async e=>{
+    e.preventDefault(); err.style.display="none";
+    try{ await store.login(u.value.trim(),p.value); }
+    catch(ex){ err.textContent="That username and password didn't match. Try again."; err.style.display="block"; }
+  }},
+    el("label",{class:"f"},"Username"),u,
+    el("label",{class:"f"},"Password"),p,err,
+    el("div",{class:"btnrow"},el("button",{class:"btn primary big",type:"submit"},"Sign in")));
+  return el("div",{class:"wrap"},topBar(STORE_NAME),el("div",{class:"panel"},form));
+}
+
+/* ---------- Home ---------- */
+function screenHome(){
+  const last=lastSession();
+  const pend=pending();
+  const tile=(title,sub,fn,cls)=>el("button",{class:"tile "+(cls||""),onclick:fn},el("b",{},title),el("span",{},sub));
+
+  const pendPanel=el("div",{class:"panel"},
+    el("h2",{},"Logged since the last count"),
+    el("p",{},"These are included in the next count. Tap Remove to fix a typo."));
+  if(!pend.length) pendPanel.append(el("div",{class:"empty"},"Nothing yet."));
+  pend.forEach(e=>{
+    const inn=e.type==="receive";
+    pendPanel.append(el("div",{class:"evt"},
+      el("div",{class:"q "+(inn?"in":"out")},(inn?"+":"−")+e.qty),
+      el("div",{class:"t"},e.itemName,el("small",{},`${REASONS[e.reason]||e.reason} · ${fmtDate(e.date)}${e.note?" · "+e.note:""}`)),
+      el("button",{class:"linkbtn",onclick:async()=>{
+        if(await confirmDialog(`Remove ${inn?"+":"−"}${e.qty} ${e.itemName} (${REASONS[e.reason]||e.reason})?`,"Remove",true)){
+          await store.commit([{op:"del",coll:"events",id:e.id}]); toast("Removed.");
+        }}},"Remove")));
+  });
+
+  return el("div",{class:"wrap"},
+    el("div",{class:"top"},el("h1",{},STORE_NAME),
+      DEMO?null:el("button",{class:"iconbtn",onclick:()=>store.logout()},"Sign out")),
+    tile(last?"Count inventory":"Do the first count",
+         last?`Last count: ${fmtDate(last.date,true)}`:"Count everything on the shelves to set the starting numbers",
+         ()=>{ ensureDraft(); go("count"); },"main"),
+    el("div",{class:"tiles"},
+      tile("Add new stock","Items that were delivered or restocked",()=>go("stock")),
+      tile("Lost, damaged or given away","Anything that left without being sold",()=>go("writeoff"))),
+    pendPanel,
+    el("div",{class:"btnrow"},el("button",{class:"btn ghost",onclick:()=>go("teacher")},"Teacher area")));
+}
+
+/* ---------- Item row with + / − ---------- */
+function qtyRow(item,values,o){
+  o=o||{};
+  const input=el("input",{class:"qty",type:"text",inputmode:"numeric",pattern:"[0-9]*",autocomplete:"off","aria-label":item.name+" quantity",placeholder:"–"});
+  input.value=values[item.id]??"";
+  const warn=el("div",{class:"warnmsg"});
+  const minus=el("button",{type:"button","aria-label":"One less "+item.name},"−");
+  const plus=el("button",{type:"button","aria-label":"One more "+item.name},"+");
+  const row=el("div",{class:"row"},
+    el("div",{class:"rinfo"},
+      el("div",{class:"rname"},item.name,item.status==="retiring"?el("span",{class:"pill"},"final count"):null),
+      el("div",{class:"rmeta"},el("span",{class:"price"},money(item.price)),o.sub?el("span",{class:"sub"},o.sub):null),warn),
+    el("div",{class:"stepper"},minus,input,plus));
+  row.dataset.name=item.name.toLowerCase();
+  const set=v=>{
+    v=String(v).replace(/\D/g,"").slice(0,5); input.value=v;
+    if(v==="") delete values[item.id]; else values[item.id]=v;
+    row.classList.toggle("filled",v!=="");
+    if(o.onChange) o.onChange(item,v,row,warn);
+  };
+  input.addEventListener("input",()=>set(input.value));
+  input.addEventListener("focus",()=>input.select());
+  input.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){ e.preventDefault(); const all=[...document.querySelectorAll(".qty")]; const n=all[all.indexOf(input)+1]; if(n) n.focus(); else input.blur(); }
+  });
+  minus.addEventListener("click",()=>set(Math.max(0,(parseInt(input.value,10)||0)-1)));
+  plus.addEventListener("click",()=>set((parseInt(input.value,10)||0)+1));
+  row.classList.toggle("filled",input.value!=="");
+  if(input.value!=="" && o.onChange) o.onChange(item,input.value,row,warn);
+  return row;
+}
+
+/* ---------- Count: step 1 (enter numbers) ---------- */
+function screenCount(){
+  ensureDraft();
+  const last=lastSession(), items=activeItems();
+  Object.keys(draft.counts).forEach(id=>{ if(!items.some(i=>i.id===id)) delete draft.counts[id]; });
+
+  const progress=el("div",{class:"prog"}), meter=el("i"), next=el("button",{class:"btn primary big",onclick:toReview},"Review count");
+  function update(){
+    const done=items.filter(i=>draft.counts[i.id]!==undefined).length;
+    progress.replaceChildren(el("b",{},`${done} of ${items.length} counted`),el("div",{class:"meter"},meter));
+    meter.style.width=(items.length?done/items.length*100:0)+"%";
+    next.disabled=done<items.length;
+    saveDraft();
+  }
+  function toReview(){
+    if(last && draft.date<last.date){ toast("The count date can't be before the last count ("+fmtDate(last.date)+")."); return; }
+    go("review");
+  }
+
+  const dateIn=el("input",{type:"date",value:draft.date,onchange:e=>{draft.date=e.target.value||todayStr();saveDraft();}});
+  const wrap=el("div",{class:"wrap"},
+    topBar(last?"Count inventory":"First count",()=>go("home")),
+    el("div",{class:"panel"},
+      el("p",{},last?"Count what is physically on the shelf for every item. Type 0 if it's sold out."
+                    :"This first count sets the starting numbers. Money starts being tracked after your next count."),
+      el("label",{class:"f"},"Date of this count"),dateIn));
+
+  groupItems(items).forEach(([cat,list])=>{
+    wrap.append(el("div",{class:"cat"},cat));
+    list.forEach(it=>{
+      const prev=prevCount(last,it.id), exp=expectedStock(it);
+      wrap.append(qtyRow(it,draft.counts,{
+        sub: last?`Last count: ${prev}`:null,
+        onChange:(item,v,row,warn)=>{
+          const bad = last && v!=="" && Number(v)>exp;
+          row.classList.toggle("warn",!!bad);
+          warn.textContent = bad ? "That's more than we should have. Please recount." : "";
+          update();
+        }}));
+    });
+  });
+  wrap.append(el("div",{class:"footbar"},progress,next));
+  update();
+  return wrap;
+}
+
+/* ---------- Count: step 2 (review + money) ---------- */
+function screenReview(){
+  ensureDraft();
+  const last=lastSession(), baseline=!last, items=activeItems();
+  if(items.some(i=>draft.counts[i.id]===undefined)) return redirect("count");
+  const counts=Object.fromEntries(items.map(i=>[i.id,parseInt(draft.counts[i.id],10)]));
+  const lines=computeLines(counts);
+  const gross=round2(sum(lines,l=>l.gross));
+  const negs=lines.filter(l=>l.sold!==null&&l.sold<0);
+  const wrap=el("div",{class:"wrap"},topBar("Check your count",()=>go("count")));
+
+  if(negs.length) wrap.append(el("div",{class:"alert"},
+    el("b",{},"Check these items: "),
+    negs.map(l=>`${l.name} (counted ${-l.sold} more than expected)`).join(", "),
+    ". Go back and recount, or log a delivery you forgot. You can still save if you're sure."));
+
+  const tbl=el("table",{class:"tbl"},
+    el("tr",{},...["Item",baseline?null:"Last","In","Out","Counted",baseline?null:"Sold"].filter(x=>x!==null).map(t=>el("th",{},t))));
+  lines.forEach(l=>{
+    const out=l.lost+l.damaged+l.giveaway+l.other;
+    tbl.append(el("tr",{class:l.sold!==null&&l.sold<0?"neg":""},
+      el("td",{},l.name),baseline?null:el("td",{},l.prev),el("td",{},l.received||"–"),el("td",{},out||"–"),
+      el("td",{},l.counted),baseline?null:el("td",{},el("b",{},l.sold))));
+  });
+  wrap.append(el("div",{class:"scroll"},tbl));
+
+  const sumBox=el("div",{class:"sumbox"});
+  const submit=el("button",{class:"btn primary big",disabled:true},baseline?"Save starting count":"Save this count");
+  let cashIn,cpIn,notesIn;
+
+  if(!baseline){
+    cashIn=el("input",{class:"money",type:"text",inputmode:"decimal",placeholder:"0.00",value:draft.cash});
+    cpIn=el("input",{class:"money",type:"text",inputmode:"numeric",placeholder:"0",value:draft.coupons});
+    notesIn=el("input",{type:"text",maxlength:"200",placeholder:"Optional (please don't type student names)",value:draft.notes});
+    wrap.append(el("div",{class:"panel"},
+      el("h2",{},"Money"),
+      el("label",{class:"f"},`Cash collected since ${fmtDate(last.date,true)}`),
+      el("div",{class:"hint"},"Count the money in the box. Don't include your starting change. Type 0 if none."),cashIn,
+      el("label",{class:"f"},`Coupons redeemed (${money(couponValue())} off each)`),
+      el("div",{class:"hint"},"How many coupons were turned in? Type 0 if none."),cpIn,
+      el("label",{class:"f"},"Notes"),notesIn,sumBox));
+    [cashIn,cpIn,notesIn].forEach(i=>i.addEventListener("input",refresh));
+  }
+
+  function figures(){
+    const cash=cashIn?parseMoney(cashIn.value):0;
+    const cp=cpIn?parseInt(cpIn.value,10):0;
+    const couponTotal=round2((isNaN(cp)?0:cp)*couponValue());
+    const expected=round2(gross-couponTotal);
+    return {cash,cp:isNaN(cp)?0:cp,couponTotal,expected,variance:round2((isNaN(cash)?0:cash)-expected)};
+  }
+  function refresh(){
+    draft.cash=cashIn.value; draft.coupons=cpIn.value; draft.notes=notesIn.value; saveDraft();
+    const f=figures(), ok=!isNaN(f.cash)&&cashIn.value!==""&&/^\d+$/.test(cpIn.value);
+    const diff = !ok ? "–" : Math.abs(f.variance)<0.005 ? "Matches" : f.variance<0 ? `Short ${money(-f.variance)}` : `Over ${money(f.variance)}`;
+    const cls = !ok ? "" : Math.abs(f.variance)<0.005 ? "good" : f.variance<0 ? "bad" : "over";
+    sumBox.replaceChildren(
+      el("div",{class:"sumrow"},el("span",{},"Items sold, at full price"),el("span",{},money(gross))),
+      el("div",{class:"sumrow"},el("span",{},"Minus coupons"),el("span",{},"−"+money(f.couponTotal))),
+      el("div",{class:"sumrow big"},el("span",{},"Should have collected"),el("span",{},money(f.expected))),
+      el("div",{class:"sumrow"},el("span",{},"Cash counted"),el("span",{},ok?money(f.cash):"–")),
+      el("div",{class:"sumrow big"},el("span",{},"Difference"),el("span",{class:cls},diff)));
+    submit.disabled=!ok;
+  }
+  if(!baseline) refresh(); else submit.disabled=false;
+
+  submit.addEventListener("click",async()=>{
+    submit.disabled=true; submit.textContent="Saving…";
+    const f=baseline?{cash:0,cp:0,couponTotal:0,expected:0,variance:0}:figures();
+    const sid=newId(), retired=items.filter(i=>i.status==="retiring").map(i=>i.id);
+    const sess={date:draft.date,createdAt:Date.now(),isBaseline:baseline,lines,
+      gross:baseline?0:gross,coupons:f.cp,couponValue:couponValue(),couponTotal:f.couponTotal,
+      expected:f.expected,cash:f.cash,variance:f.variance,notes:(draft.notes||"").trim(),retiredItemIds:retired};
+    const ops=[{op:"set",coll:"sessions",id:sid,data:sess}];
+    pending().forEach(e=>ops.push({op:"set",coll:"events",id:e.id,data:{sessionId:sid}}));
+    retired.forEach(id=>ops.push({op:"set",coll:"items",id:id,data:{status:"discontinued"}}));
+    try{ await store.commit(ops); clearDraft(); go("done",{sess}); }
+    catch(e){ submit.disabled=false; submit.textContent="Save this count"; toast("Couldn't save: "+e.message); }
+  });
+
+  wrap.append(el("div",{class:"footbar"},el("div",{class:"prog"}),submit));
+  return wrap;
+}
+
+/* ---------- Count saved ---------- */
+function screenDone(){
+  const s=screen.sess;
+  const w=el("div",{class:"wrap"},el("div",{class:"top"},el("h1",{},"Count saved")),
+    el("div",{class:"panel",style:"text-align:center"},el("div",{class:"big-ok"},"✅")));
+  if(s.isBaseline) w.lastChild.append(el("p",{},"Starting numbers are set. Next time you count, the app will work out what sold."));
+  else{
+    const items=sum(s.lines,l=>l.sold||0);
+    const d=Math.abs(s.variance)<0.005?"Money matches the count.":s.variance<0?`Cash is short by ${money(-s.variance)}.`:`Cash is over by ${money(s.variance)}.`;
+    w.lastChild.append(el("p",{},`${items} items sold. Should have collected ${money(s.expected)}, counted ${money(s.cash)}.`),el("p",{},el("b",{},d)));
+  }
+  w.append(el("div",{class:"btnrow"},el("button",{class:"btn primary big",onclick:()=>go("home")},"Done")));
+  return w;
+}
+
+/* ---------- Add stock / Lost-damaged-given away ---------- */
+function screenEntry(kind){
+  const isStock=kind==="stock", values={}; let reason=null;
+  const items=activeItems();
+  const dateIn=el("input",{type:"date",value:todayStr()});
+  const noteIn=el("input",{type:"text",maxlength:"80",placeholder:isStock?"Optional (e.g., Costco run)":"Optional (e.g., coupon giveaway). No student names."});
+  const save=el("button",{class:"btn primary big",disabled:true,onclick:doSave},"Save");
+  const search=el("input",{type:"text",placeholder:"Search items…",oninput:e=>{
+    const q=e.target.value.trim().toLowerCase();
+    wrap.querySelectorAll(".row").forEach(r=>{ r.style.display=!q||r.dataset.name.includes(q)?"":"none"; });
+  }});
+  const entries=()=>Object.entries(values).filter(([,v])=>parseInt(v,10)>0);
+  function update(){
+    const n=entries().length;
+    save.disabled = n===0 || (!isStock && !reason);
+    save.textContent = n? `Save ${n} item${n>1?"s":""}` : "Save";
+  }
+  async function doSave(){
+    if(!dateIn.value){ toast("Pick a date."); return; }
+    save.disabled=true;
+    const ops=entries().map(([id,v])=>{
+      const it=items.find(i=>i.id===id);
+      return {op:"set",coll:"events",id:newId(),data:{type:isStock?"receive":"writeoff",itemId:id,itemName:it.name,qty:parseInt(v,10),
+        reason:isStock?"delivery":reason,note:noteIn.value.trim(),date:dateIn.value,sessionId:null,createdAt:Date.now()}};
+    });
+    try{ await store.commit(ops); toast(isStock?"Stock added.":"Saved."); go("home"); }
+    catch(e){ save.disabled=false; toast("Couldn't save: "+e.message); }
+  }
+
+  const wrap=el("div",{class:"wrap"},topBar(isStock?"Add new stock":"Lost, damaged or given away",()=>go("home")));
+  const head=el("div",{class:"panel"});
+  head.append(el("p",{},isStock?"Type how many were added for each item. Leave the rest blank."
+                               :"Pick why they left, then type how many for each item. Don't use this for items that were sold."));
+  if(!isStock){
+    const chips=el("div",{class:"chips"});
+    [["lost","Lost"],["damaged","Damaged"],["giveaway","Given away"],["other","Other"]].forEach(([k,label])=>{
+      const c=el("button",{type:"button",class:"chip","aria-pressed":"false",onclick:()=>{
+        reason=k; chips.querySelectorAll(".chip").forEach(x=>x.setAttribute("aria-pressed",String(x===c))); update(); }},label);
+      chips.append(c);
+    });
+    head.append(el("label",{class:"f"},"Why did they leave?"),chips);
+  }
+  head.append(el("label",{class:"f"},"Date"),dateIn,el("label",{class:"f"},"Note"),noteIn,el("label",{class:"f"},"Find an item"),search);
+  wrap.append(head);
+  groupItems(items).forEach(([cat,list])=>{
+    wrap.append(el("div",{class:"cat"},cat));
+    list.forEach(it=>wrap.append(qtyRow(it,values,{onChange:update})));
+  });
+  wrap.append(el("div",{class:"footbar"},el("div",{class:"prog"}),save));
+  update();
+  return wrap;
+}
+
+/* ---------- Teacher area ---------- */
+function screenTeacher(){
+  const wrap=el("div",{class:"wrap"},topBar("Teacher area",()=>go("home"),
+    isUnlocked()?el("button",{class:"iconbtn",onclick:()=>{teacher.until=0;go("home");}},"Lock"):null));
+  if(!isUnlocked()){ wrap.append(pinGate()); return wrap; }
+  const tabs=el("div",{class:"tabs"});
+  [["history","History"],["items","Items & prices"],["settings","Settings"]].forEach(([k,l])=>
+    tabs.append(el("button",{class:"chip","aria-pressed":String(teacher.tab===k),onclick:()=>{teacher.tab=k;render();}},l)));
+  wrap.append(tabs, teacher.tab==="history"?tabHistory():teacher.tab==="items"?tabItems():tabSettings());
+  return wrap;
+}
+
+function pinGate(){
+  const has=!!settings().pinHash;
+  const a=el("input",{type:"password",inputmode:"numeric",autocomplete:"off"});
+  const b=el("input",{type:"password",inputmode:"numeric",autocomplete:"off"});
+  const err=el("div",{class:"alert red",style:"display:none"});
+  const fail=m=>{err.textContent=m;err.style.display="block";};
+  const form=el("form",{onsubmit:async e=>{
+    e.preventDefault();
+    if(has){
+      if(await hashPin(a.value)===settings().pinHash){ teacher.until=Date.now()+20*60000; render(); } else fail("That PIN isn't right.");
+    }else{
+      if(!/^\d{4,8}$/.test(a.value)) return fail("Use 4 to 8 numbers.");
+      if(a.value!==b.value) return fail("The two PINs don't match.");
+      await store.commit([{op:"set",coll:"settings",id:"main",data:{pinHash:await hashPin(a.value)}}]);
+      teacher.until=Date.now()+20*60000; toast("PIN saved."); render();
+    }
+  }},
+    el("label",{class:"f"},has?"Teacher PIN":"Create a teacher PIN (4 to 8 numbers)"),a,
+    has?null:[el("label",{class:"f"},"Type it again"),b],err,
+    el("div",{class:"btnrow"},el("button",{class:"btn primary big",type:"submit"},has?"Unlock":"Save PIN")));
+  return el("div",{class:"panel"},
+    el("p",{},has?"History, prices and settings are for teachers only.":"This keeps students out of prices and history. Choose a PIN that students won't guess."),form);
+}
+
+/* --- History --- */
+function tabHistory(){
+  const ss=sortedSessions(), box=el("div",{});
+  if(ss.length<2){
+    box.append(el("div",{class:"panel"},el("h2",{},"Nothing to show yet"),
+      el("p",{},ss.length?"You've done the starting count. After the next count, you'll see what sold and the money here.":"Do the first count to get started.")));
+    if(ss.length) box.append(undoSection(ss));
+    return box;
+  }
+  if(!ss.some(s=>s.id===teacher.fromId)||!ss.some(s=>s.id===teacher.toId)||ss.findIndex(s=>s.id===teacher.fromId)>=ss.findIndex(s=>s.id===teacher.toId)){
+    teacher.fromId=ss[0].id; teacher.toId=ss[ss.length-1].id;
+  }
+  const label=s=>fmtDate(s.date,true)+(s.isBaseline?" (starting count)":"");
+  const mk=(val,onch)=>el("select",{onchange:onch},...ss.map(s=>{const o=el("option",{value:s.id},label(s)); if(s.id===val) o.selected=true; return o;}));
+  const fromSel=mk(teacher.fromId,e=>{teacher.fromId=e.target.value;render();});
+  const toSel=mk(teacher.toId,e=>{teacher.toId=e.target.value;render();});
+  const fi=ss.findIndex(s=>s.id===teacher.fromId), ti=ss.findIndex(s=>s.id===teacher.toId);
+
+  box.append(el("div",{class:"panel"},
+    el("h2",{},"Choose a date range"),
+    el("div",{class:"hint"},"Pick two count dates. You'll see everything that happened between them."),
+    el("label",{class:"f"},"From count"),fromSel,el("label",{class:"f"},"To count"),toSel,
+    el("div",{class:"btnrow"},el("button",{class:"btn small",onclick:()=>{teacher.fromId=ss[0].id;teacher.toId=ss[ss.length-1].id;render();}},"Whole school year"))));
+
+  const A=aggregate(ss,fi,ti);
+  if(fi>=ti){ box.append(el("div",{class:"alert"},"Pick a 'To' count that is after the 'From' count.")); return box; }
+  const t=A.totals;
+  const diff=Math.abs(t.variance)<0.005?"Matches":t.variance<0?`Short ${money(-t.variance)}`:`Over ${money(t.variance)}`;
+  const dcls=Math.abs(t.variance)<0.005?"good":t.variance<0?"bad":"over";
+  box.append(el("div",{class:"cards"},
+    el("div",{class:"stat"},el("small",{},"Should have collected"),el("b",{},money(t.expected))),
+    el("div",{class:"stat"},el("small",{},"Cash counted"),el("b",{},money(t.cash))),
+    el("div",{class:"stat"},el("small",{},"Difference"),el("b",{class:dcls},diff))));
+  box.append(el("p",{class:"hint"},`Items sold at full price: ${money(t.gross)}. Coupons: ${t.coupons} (−${money(t.couponTotal)}).`));
+
+  // each count period
+  const wk=el("table",{class:"tbl"},el("tr",{},...["Period","Items sold","Coupons","Should have","Cash","Difference"].map(x=>el("th",{},x))));
+  A.periods.forEach((p,i)=>{
+    const prev=ss[ss.indexOf(p)-1];
+    const d=Math.abs(p.variance)<0.005?el("span",{class:"good"},"Matches"):p.variance<0?el("span",{class:"bad"},"−"+money(-p.variance)):el("span",{class:"over"},"+"+money(p.variance));
+    wk.append(el("tr",{class:"click",title:"Show just this period",onclick:()=>{teacher.fromId=prev.id;teacher.toId=p.id;render();}},
+      el("td",{},`${fmtDate(prev.date)} → ${fmtDate(p.date)}`),el("td",{},money(p.gross)),el("td",{},p.coupons),el("td",{},money(p.expected)),el("td",{},money(p.cash)),el("td",{},d)));
+  });
+  box.append(el("h2",{style:"margin:22px 0 0;font-size:19px"},"Each count period"),el("div",{class:"hint"},"Tap a row to see just that week."),el("div",{class:"scroll"},wk));
+
+  // item detail
+  const order=new Map(state.items.map(i=>[i.id,i.sort??0]));
+  const rows=A.rows.sort((a,b)=>(order.get(a.itemId)??9999)-(order.get(b.itemId)??9999));
+  const tb=el("table",{class:"tbl"},el("tr",{},...["Item","Start","Received","Lost","Damaged","Given away","Other","Sold","End","Sales $"].map(x=>el("th",{},x))));
+  rows.forEach(r=>tb.append(el("tr",{class:r.sold<0?"neg":""},el("td",{},r.name),el("td",{},r.start),el("td",{},r.received||"–"),el("td",{},r.lost||"–"),
+    el("td",{},r.damaged||"–"),el("td",{},r.giveaway||"–"),el("td",{},r.other||"–"),el("td",{},el("b",{},r.sold)),el("td",{},r.end),el("td",{},money(r.gross)))));
+  tb.append(el("tr",{class:"total"},el("td",{},"Total"),el("td",{},""),el("td",{},sum(rows,r=>r.received)),el("td",{},sum(rows,r=>r.lost)),el("td",{},sum(rows,r=>r.damaged)),
+    el("td",{},sum(rows,r=>r.giveaway)),el("td",{},sum(rows,r=>r.other)),el("td",{},sum(rows,r=>r.sold)),el("td",{},""),el("td",{},money(t.gross))));
+  box.append(el("h2",{style:"margin:22px 0 0;font-size:19px"},"Item by item"),
+    el("div",{class:"hint"},"“Sold” is what left the shelf and wasn't lost, damaged or given away. Red rows were counted higher than expected."),el("div",{class:"scroll"},tb));
+
+  box.append(el("div",{class:"btnrow"},
+    el("button",{class:"btn",onclick:()=>exportItems(ss,fi,ti)},"Download item details (CSV)"),
+    el("button",{class:"btn",onclick:()=>exportWeeks(ss,fi,ti)},"Download totals by week (CSV)")));
+  box.append(undoSection(ss));
+  return box;
+}
+
+function aggregate(ss,fi,ti){
+  const periods=ss.slice(fi+1,ti+1), map=new Map();
+  periods.forEach(s=>s.lines.forEach(l=>{
+    let a=map.get(l.itemId);
+    if(!a){ a={itemId:l.itemId,name:l.name,start:l.prev??0,received:0,lost:0,damaged:0,giveaway:0,other:0,sold:0,gross:0,end:l.counted}; map.set(l.itemId,a); }
+    a.name=l.name; a.received+=l.received||0; a.lost+=l.lost||0; a.damaged+=l.damaged||0; a.giveaway+=l.giveaway||0; a.other+=l.other||0;
+    a.sold+=l.sold||0; a.gross=round2(a.gross+(l.gross||0)); a.end=l.counted;
+  }));
+  const T=f=>round2(sum(periods,p=>p[f]||0));
+  return {periods,rows:[...map.values()],totals:{gross:T("gross"),coupons:sum(periods,p=>p.coupons||0),couponTotal:T("couponTotal"),expected:T("expected"),cash:T("cash"),variance:T("variance")}};
+}
+
+function undoSection(ss){
+  const last=ss[ss.length-1];
+  return el("div",{class:"panel"},el("h2",{},"Made a mistake?"),
+    el("p",{},"Undo the most recent count to enter it again. Deliveries and write-offs it used go back to “logged since the last count.”"),
+    el("div",{class:"btnrow"},el("button",{class:"btn danger small",onclick:async()=>{
+      if(!await confirmDialog(`Undo the count from ${fmtDate(last.date,true)}? You can then enter it again.`,"Undo count",true)) return;
+      const ops=[{op:"del",coll:"sessions",id:last.id}];
+      state.events.filter(e=>e.sessionId===last.id).forEach(e=>ops.push({op:"set",coll:"events",id:e.id,data:{sessionId:null}}));
+      (last.retiredItemIds||[]).forEach(id=>ops.push({op:"set",coll:"items",id,data:{status:"retiring"}}));
+      await store.commit(ops); toast("Count undone.");
+    }},"Undo most recent count")));
+}
+
+function csvDownload(name,rows){
+  const esc=v=>{v=String(v??"");return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  const blob=new Blob(["\ufeff"+rows.map(r=>r.map(esc).join(",")).join("\n")],{type:"text/csv"});
+  const a=el("a",{href:URL.createObjectURL(blob),download:name}); document.body.append(a); a.click(); a.remove();
+}
+function exportItems(ss,fi,ti){
+  const rows=[["Period start","Period end","Item","Price","Start count","Received","Lost","Damaged","Given away","Other","End count","Sold","Sales $"]];
+  ss.slice(fi+1,ti+1).forEach(p=>{ const prev=ss[ss.indexOf(p)-1];
+    p.lines.forEach(l=>rows.push([prev.date,p.date,l.name,l.price,l.prev??0,l.received,l.lost,l.damaged,l.giveaway,l.other,l.counted,l.sold,l.gross])); });
+  csvDownload("store-items.csv",rows);
+}
+function exportWeeks(ss,fi,ti){
+  const rows=[["Period start","Period end","Items sold $","Coupons redeemed","Coupon $ off","Should have collected","Cash counted","Difference","Notes"]];
+  ss.slice(fi+1,ti+1).forEach(p=>{ const prev=ss[ss.indexOf(p)-1];
+    rows.push([prev.date,p.date,p.gross,p.coupons,p.couponTotal,p.expected,p.cash,p.variance,p.notes||""]); });
+  csvDownload("store-weekly-totals.csv",rows);
+}
+
+/* --- Items & prices --- */
+function tabItems(){
+  const box=el("div",{});
+  box.append(el("div",{class:"btnrow",style:"margin-top:10px"},el("button",{class:"btn primary",onclick:()=>itemModal(null)},"+ Add a new item")));
+  const act=state.items.filter(i=>i.status!=="discontinued");
+  const dis=state.items.filter(i=>i.status==="discontinued").sort(bySort);
+  const tbl=el("table",{class:"tbl"},el("tr",{},...["Item","Category","Price","Status",""].map(x=>el("th",{},x))));
+  groupItems(act).forEach(([,list])=>list.forEach(i=>tbl.append(el("tr",{},
+    el("td",{},i.name),el("td",{},i.category||""),el("td",{},money(i.price)),
+    el("td",{},i.status==="retiring"?el("span",{class:"pill grey"},"final count next"):el("span",{class:"pill green"},"selling")),
+    el("td",{},el("button",{class:"btn small",onclick:()=>itemModal(i)},"Edit"))))));
+  box.append(el("div",{class:"scroll"},tbl));
+  box.append(el("p",{class:"hint"},"Price changes apply starting with your next count. Past weeks keep the prices they were counted at."));
+  if(dis.length){
+    const t2=el("table",{class:"tbl"});
+    dis.forEach(i=>t2.append(el("tr",{},el("td",{},i.name),el("td",{},money(i.price)),
+      el("td",{},el("button",{class:"btn small",onclick:()=>reviveModal(i)},"Bring back")))));
+    box.append(el("h2",{style:"margin:22px 0 0;font-size:19px"},"Discontinued items"),el("div",{class:"hint"},"Their sales history is kept in the records."),el("div",{class:"scroll"},t2));
+  }
+  return box;
+}
+
+function categoryList(){ return [...new Set(state.items.map(i=>i.category).filter(Boolean))]; }
+
+function itemModal(item){
+  const isNew=!item;
+  const name=el("input",{type:"text",value:item?.name||"",maxlength:"60"});
+  const price=el("input",{type:"text",inputmode:"decimal",value:item?item.price.toFixed(2):""});
+  const cat=el("input",{type:"text",list:"cats",value:item?.category||"",maxlength:"30"});
+  const qty=el("input",{type:"text",inputmode:"numeric",placeholder:"0"});
+  const err=el("div",{class:"alert red",style:"display:none"});
+  const dl=el("datalist",{id:"cats"},...categoryList().map(c=>el("option",{value:c})));
+  const close=modal(el("div",{},
+    el("h3",{},isNew?"Add a new item":"Edit "+item.name),dl,
+    el("label",{class:"f"},"Name"),name,
+    el("label",{class:"f"},"Price ($)"),price,
+    el("label",{class:"f"},"Category (Chips, Candy, Drinks…)"),cat,
+    isNew?[el("label",{class:"f"},"How many are you putting on the shelf right now?"),qty]:null,
+    err,
+    el("div",{class:"btnrow"},
+      el("button",{class:"btn primary",onclick:async()=>{
+        const p=parseMoney(price.value), n=name.value.trim();
+        if(!n){ err.textContent="Enter a name."; err.style.display="block"; return; }
+        if(isNaN(p)){ err.textContent="Enter a price like 2 or 0.50."; err.style.display="block"; return; }
+        const data={name:n,price:p,category:cat.value.trim()||"Other"};
+        if(isNew){
+          const id=newId(), q=parseInt(qty.value,10)||0;
+          const ops=[{op:"set",coll:"items",id,data:{...data,status:"active",sort:(Math.max(0,...state.items.map(i=>i.sort??0))+10),createdAt:Date.now()}}];
+          if(q>0) ops.push({op:"set",coll:"events",id:newId(),data:{type:"receive",itemId:id,itemName:n,qty:q,reason:"newitem",note:"",date:todayStr(),sessionId:null,createdAt:Date.now()}});
+          await store.commit(ops); toast("Item added.");
+        }else{ await store.commit([{op:"set",coll:"items",id:item.id,data}]); toast("Saved."); }
+        close();
+      }},"Save"),
+      el("button",{class:"btn ghost",onclick:()=>close()},"Cancel")),
+    !isNew?el("div",{style:"margin-top:18px;border-top:2px solid var(--line);padding-top:14px"},
+      item.status==="retiring"
+        ? [el("p",{class:"hint"},"This item gets one last count, then disappears from the count screen."),
+           el("button",{class:"btn small",onclick:async()=>{await store.commit([{op:"set",coll:"items",id:item.id,data:{status:"active"}}]);close();toast("Back to selling.");}},"Keep selling it")]
+        : [el("p",{class:"hint"},"Done selling this? It will get one last count, then disappear from the count screen. Its history is kept."),
+           el("button",{class:"btn danger small",onclick:async()=>{await store.commit([{op:"set",coll:"items",id:item.id,data:{status:"retiring"}}]);close();toast("It will get a final count.");}},"Discontinue this item")]):null));
+}
+
+function reviveModal(item){
+  const qty=el("input",{type:"text",inputmode:"numeric",placeholder:"0"});
+  const close=modal(el("div",{},el("h3",{},"Bring back "+item.name),
+    el("label",{class:"f"},"How many are on the shelf now?"),qty,
+    el("div",{class:"btnrow"},
+      el("button",{class:"btn primary",onclick:async()=>{
+        const q=parseInt(qty.value,10)||0;
+        const ops=[{op:"set",coll:"items",id:item.id,data:{status:"active"}}];
+        if(q>0) ops.push({op:"set",coll:"events",id:newId(),data:{type:"receive",itemId:item.id,itemName:item.name,qty:q,reason:"newitem",note:"",date:todayStr(),sessionId:null,createdAt:Date.now()}});
+        await store.commit(ops); close(); toast(item.name+" is back.");
+      }},"Bring back"),el("button",{class:"btn ghost",onclick:()=>close()},"Cancel"))));
+}
+
+/* --- Settings --- */
+function tabSettings(){
+  const cv=el("input",{type:"text",inputmode:"decimal",value:couponValue().toFixed(2)});
+  const p1=el("input",{type:"password",inputmode:"numeric",autocomplete:"off"});
+  const box=el("div",{},
+    el("div",{class:"panel"},el("h2",{},"Coupon value"),
+      el("p",{},"How many dollars each coupon takes off. New counts use this value; past counts keep the value they had."),
+      el("label",{class:"f"},"Dollars off per coupon"),cv,
+      el("div",{class:"btnrow"},el("button",{class:"btn primary",onclick:async()=>{
+        const v=parseMoney(cv.value); if(isNaN(v)){toast("Enter a dollar amount like 1.00");return;}
+        await store.commit([{op:"set",coll:"settings",id:"main",data:{couponValue:v}}]); toast("Saved.");
+      }},"Save"))),
+    el("div",{class:"panel"},el("h2",{},"Change teacher PIN"),
+      el("label",{class:"f"},"New PIN (4 to 8 numbers)"),p1,
+      el("div",{class:"btnrow"},el("button",{class:"btn primary",onclick:async()=>{
+        if(!/^\d{4,8}$/.test(p1.value)){toast("Use 4 to 8 numbers.");return;}
+        await store.commit([{op:"set",coll:"settings",id:"main",data:{pinHash:await hashPin(p1.value)}}]); p1.value=""; toast("PIN changed.");
+      }},"Change PIN"))));
+  if(DEMO) box.append(el("div",{class:"panel"},el("h2",{},"Practice mode"),
+    el("p",{},"Wipe the practice data and start over with a fresh item list."),
+    el("div",{class:"btnrow"},el("button",{class:"btn danger small",onclick:async()=>{
+      if(await confirmDialog("Erase all practice data?","Erase",true)){ clearDraft(); seeding=false; store.reset(); teacher.until=0; go("home"); }
+    }},"Erase practice data"))));
+  return box;
+}
+
+/* =====================================================================
+   6. START
+   ===================================================================== */
+const handlers={
+  onUser:u=>{ state.user=u; if(!u){ state.ready=false; } render(); },
+  onData,
+  onError:e=>{ state.error=(e.code==="permission-denied")?"Firebase says this account can't read the data. Check your security rules (see the setup guide).":"Connection problem: "+e.message; render(); }
+};
+(async()=>{
+  render();
+  try{
+    store = DEMO ? demoStore(handlers) : await firebaseStore(handlers);
+    await store.init();
+  }catch(e){
+    state.error="Couldn't start: "+e.message+". Check your Firebase settings and internet connection."; render();
+  }
+})();
+</script>
+</body>
+</html>
