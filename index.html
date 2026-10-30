@@ -924,12 +924,33 @@ function tabSettings(){
         if(!/^\d{4,8}$/.test(p1.value)){toast("Use 4 to 8 numbers.");return;}
         await store.commit([{op:"set",coll:"settings",id:"main",data:{pinHash:await hashPin(p1.value)}}]); p1.value=""; toast("PIN changed.");
       }},"Change PIN"))));
+  box.append(el("div",{class:"panel"},el("h2",{},"Start fresh"),
+    el("p",{},"Erases every count, delivery, write-off and all history. Your items and prices stay. Use this after testing, before real students start."),
+    el("div",{class:"btnrow"},el("button",{class:"btn danger small",onclick:eraseRecords},"Erase all counts and history"))));
   if(DEMO) box.append(el("div",{class:"panel"},el("h2",{},"Practice mode"),
     el("p",{},"Wipe the practice data and start over with a fresh item list."),
     el("div",{class:"btnrow"},el("button",{class:"btn danger small",onclick:async()=>{
       if(await confirmDialog("Erase all practice data?","Erase",true)){ clearDraft(); seeding=false; store.reset(); teacher.until=0; go("home"); }
     }},"Erase practice data"))));
   return box;
+}
+
+
+function eraseRecords(){
+  const typed=el("input",{type:"text",autocomplete:"off",placeholder:"Type ERASE"});
+  const btn=el("button",{class:"btn danger",disabled:true,onclick:async()=>{
+    btn.disabled=true; btn.textContent="Erasing…";
+    const ops=[...state.events.map(e=>({op:"del",coll:"events",id:e.id})),...state.sessions.map(x=>({op:"del",coll:"sessions",id:x.id}))];
+    try{
+      for(let i=0;i<ops.length;i+=400) await store.commit(ops.slice(i,i+400));
+      clearDraft(); close(); toast("All counts and history erased.");
+    }catch(e){ btn.disabled=false; btn.textContent="Erase everything"; toast("Couldn't erase: "+e.message); }
+  }},"Erase everything");
+  typed.addEventListener("input",()=>{ btn.disabled=typed.value.trim().toUpperCase()!=="ERASE"; });
+  const close=modal(el("div",{},el("h3",{},"Erase all counts and history?"),
+    el("p",{class:"msg"},`This permanently deletes ${state.sessions.length} count${state.sessions.length===1?"":"s"} and ${state.events.length} logged delivery/write-off${state.events.length===1?"":"s"}. It can't be undone. Download a CSV first if you want a copy.`),
+    el("label",{class:"f"},"To confirm, type ERASE"),typed,
+    el("div",{class:"btnrow end"},el("button",{class:"btn ghost",onclick:()=>close()},"Cancel"),btn)));
 }
 
 /* =====================================================================
