@@ -89,6 +89,10 @@ input:focus,select:focus{border-color:var(--blue);outline:none;box-shadow:0 0 0 
 .sub{color:var(--muted);font-size:15px}
 .warnmsg{color:#7A4B00;font-weight:600;font-size:15px;margin-top:4px}
 .warnmsg:empty{display:none}
+.notebox{margin-top:8px}
+.notebox input[type=text]{min-height:44px;font-size:16px}
+.chk{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:15px;font-weight:600;min-height:44px}
+.chk input{width:24px;height:24px;flex:none}
 .pill{display:inline-block;margin-left:8px;font-size:13px;font-weight:700;background:var(--warn-soft);color:#7A4B00;border-radius:999px;padding:1px 9px;vertical-align:middle}
 .pill.green{background:var(--green-soft);color:var(--green)} .pill.grey{background:#E6ECF1;color:var(--muted)}
 .stepper{display:flex;align-items:center;gap:6px;flex:none}
@@ -354,8 +358,8 @@ function expectedStock(item){
     - sum(ev.filter(e=>e.type==="writeoff"),e=>e.qty);
 }
 
-/* Sold = last count + received - written off - this count */
-function computeLines(counts){
+/* Sold = last count + received + found - written off - this count */
+function computeLines(counts,extra){
   const last=lastSession(), pend=pending();
   return activeItems().map(it=>{
     const prev=prevCount(last,it.id);
@@ -364,8 +368,10 @@ function computeLines(counts){
     const w=r=>sum(ev.filter(e=>e.type==="writeoff"&&e.reason===r),e=>e.qty);
     const lost=w("lost"), damaged=w("damaged"), giveaway=w("giveaway"), other=w("other");
     const counted=counts[it.id];
-    const sold = last ? prev+received-lost-damaged-giveaway-other-counted : null;
-    return {itemId:it.id,name:it.name,price:it.price,prev,received,lost,damaged,giveaway,other,counted,sold,
+    const x=(extra&&extra[it.id])||{};
+    const found = last && x.found ? Math.max(0, counted-(prev+received-lost-damaged-giveaway-other)) : 0;
+    const sold = last ? prev+received+found-lost-damaged-giveaway-other-counted : null;
+    return {itemId:it.id,name:it.name,price:it.price,prev,received,found,note:x.note||"",lost,damaged,giveaway,other,counted,sold,
             gross: sold==null?0:round2(sold*it.price)};
   });
 }
@@ -373,7 +379,7 @@ function computeLines(counts){
 /* In-progress count is kept on this device so a refresh doesn't lose it */
 let draft=null; try{ draft=JSON.parse(localStorage.getItem("storeCountDraft")); }catch(e){}
 const saveDraft=()=>{ try{localStorage.setItem("storeCountDraft",JSON.stringify(draft));}catch(e){} };
-const ensureDraft=()=>{ if(!draft) draft={date:todayStr(),counts:{},cash:"",coupons:"",notes:""}; };
+const ensureDraft=()=>{ if(!draft) draft={date:todayStr(),counts:{},cash:"",coupons:"",notes:"",itemNotes:{}}; if(!draft.itemNotes) draft.itemNotes={}; };
 const clearDraft=()=>{ draft=null; try{localStorage.removeItem("storeCountDraft");}catch(e){} };
 
 /* =====================================================================
@@ -491,6 +497,15 @@ function qtyRow(item,values,o){
   return row;
 }
 
+/* ---------- Note box shown under an item that was counted higher than expected ---------- */
+function noteBox(item){
+  const n=draft.itemNotes[item.id]=draft.itemNotes[item.id]||{text:"",found:true};
+  const t=el("input",{type:"text",maxlength:"120",placeholder:"Note (e.g., found a case under the shelf)",value:n.text||"",
+    oninput:e=>{n.text=e.target.value;saveDraft();}});
+  const cb=el("input",{type:"checkbox",checked:n.found!==false,onchange:e=>{n.found=e.target.checked;saveDraft();}});
+  return el("div",{class:"notebox"},t,el("label",{class:"chk"},cb,"Extra items were found. Not a sale."));
+}
+
 /* ---------- Count: step 1 (enter numbers) ---------- */
 function screenCount(){
   ensureDraft();
@@ -527,7 +542,9 @@ function screenCount(){
         onChange:(item,v,row,warn)=>{
           const bad = last && v!=="" && Number(v)>exp;
           row.classList.toggle("warn",!!bad);
-          warn.textContent = bad ? "That's more than we should have. Please recount." : "";
+          warn.textContent = bad ? "More than expected. Recount if you can, or add a note." : "";
+          if(bad && !row._nb){ row._nb=noteBox(item); warn.after(row._nb); }
+          if(!bad && row._nb){ row._nb.remove(); row._nb=null; }
           update();
         }}));
     });
@@ -543,11 +560,18 @@ function screenReview(){
   const last=lastSession(), baseline=!last, items=activeItems();
   if(items.some(i=>draft.counts[i.id]===undefined)) return redirect("count");
   const counts=Object.fromEntries(items.map(i=>[i.id,parseInt(draft.counts[i.id],10)]));
-  const lines=computeLines(counts);
+  const extra={};
+  if(last) items.forEach(i=>{ if(counts[i.id]>expectedStock(i)){ const n=(draft.itemNotes||{})[i.id]||{}; extra[i.id]={found:n.found!==false,note:(n.text||"").trim()}; } });
+  const lines=computeLines(counts,extra);
   const gross=round2(sum(lines,l=>l.gross));
   const negs=lines.filter(l=>l.sold!==null&&l.sold<0);
   const wrap=el("div",{class:"wrap"},topBar("Check your count",()=>go("count")));
 
+  const founds=lines.filter(l=>l.found>0);
+  if(founds.length) wrap.append(el("div",{class:"alert green"},
+    el("b",{},"Found extra stock (not counted as sales): "),
+    founds.map(l=>`${l.name} +${l.found}${l.note?" ("+l.note+")":""}`).join(", "),
+    ". Wrong? Go back, and uncheck “Extra items were found” on that item."));
   if(negs.length) wrap.append(el("div",{class:"alert"},
     el("b",{},"Check these items: "),
     negs.map(l=>`${l.name} (counted ${-l.sold} more than expected)`).join(", "),
@@ -558,13 +582,14 @@ function screenReview(){
   lines.forEach(l=>{
     const out=l.lost+l.damaged+l.giveaway+l.other;
     tbl.append(el("tr",{class:l.sold!==null&&l.sold<0?"neg":""},
-      el("td",{},l.name),baseline?null:el("td",{},l.prev),el("td",{},l.received||"–"),el("td",{},out||"–"),
+      el("td",{},l.name),baseline?null:el("td",{},l.prev),el("td",{},(l.received+(l.found||0))||"–"),el("td",{},out||"–"),
       el("td",{},l.counted),baseline?null:el("td",{},el("b",{},l.sold))));
   });
   wrap.append(el("div",{class:"scroll"},tbl));
 
   const sumBox=el("div",{class:"sumbox"});
   const submit=el("button",{class:"btn primary big",disabled:true},baseline?"Save starting count":"Save this count");
+  const hint=el("div",{class:"prog hint"});
   let cashIn,cpIn,notesIn;
 
   if(!baseline){
@@ -600,6 +625,7 @@ function screenReview(){
       el("div",{class:"sumrow"},el("span",{},"Cash counted"),el("span",{},ok?money(f.cash):"–")),
       el("div",{class:"sumrow big"},el("span",{},"Difference"),el("span",{class:cls},diff)));
     submit.disabled=!ok;
+    hint.textContent=ok?"":"To save, enter the cash and the number of coupons (type 0 if none).";
   }
   if(!baseline) refresh(); else submit.disabled=false;
 
@@ -617,7 +643,7 @@ function screenReview(){
     catch(e){ submit.disabled=false; submit.textContent="Save this count"; toast("Couldn't save: "+e.message); }
   });
 
-  wrap.append(el("div",{class:"footbar"},el("div",{class:"prog"}),submit));
+  wrap.append(el("div",{class:"footbar"},hint,submit));
   return wrap;
 }
 
@@ -773,14 +799,24 @@ function tabHistory(){
   // item detail
   const order=new Map(state.items.map(i=>[i.id,i.sort??0]));
   const rows=A.rows.sort((a,b)=>(order.get(a.itemId)??9999)-(order.get(b.itemId)??9999));
-  const tb=el("table",{class:"tbl"},el("tr",{},...["Item","Start","Received","Lost","Damaged","Given away","Other","Sold","End","Sales $"].map(x=>el("th",{},x))));
-  rows.forEach(r=>tb.append(el("tr",{class:r.sold<0?"neg":""},el("td",{},r.name),el("td",{},r.start),el("td",{},r.received||"–"),el("td",{},r.lost||"–"),
+  const tb=el("table",{class:"tbl"},el("tr",{},...["Item","Start","Received","Found","Lost","Damaged","Given away","Other","Sold","End","Sales $"].map(x=>el("th",{},x))));
+  rows.forEach(r=>tb.append(el("tr",{class:r.sold<0?"neg":""},el("td",{},r.name),el("td",{},r.start),el("td",{},r.received||"–"),el("td",{},r.found||"–"),el("td",{},r.lost||"–"),
     el("td",{},r.damaged||"–"),el("td",{},r.giveaway||"–"),el("td",{},r.other||"–"),el("td",{},el("b",{},r.sold)),el("td",{},r.end),el("td",{},money(r.gross)))));
-  tb.append(el("tr",{class:"total"},el("td",{},"Total"),el("td",{},""),el("td",{},sum(rows,r=>r.received)),el("td",{},sum(rows,r=>r.lost)),el("td",{},sum(rows,r=>r.damaged)),
+  tb.append(el("tr",{class:"total"},el("td",{},"Total"),el("td",{},""),el("td",{},sum(rows,r=>r.received)),el("td",{},sum(rows,r=>r.found)),el("td",{},sum(rows,r=>r.lost)),el("td",{},sum(rows,r=>r.damaged)),
     el("td",{},sum(rows,r=>r.giveaway)),el("td",{},sum(rows,r=>r.other)),el("td",{},sum(rows,r=>r.sold)),el("td",{},""),el("td",{},money(t.gross))));
   box.append(el("h2",{style:"margin:22px 0 0;font-size:19px"},"Item by item"),
     el("div",{class:"hint"},"“Sold” is what left the shelf and wasn't lost, damaged or given away. Red rows were counted higher than expected."),el("div",{class:"scroll"},tb));
 
+  const noteRows=[];
+  A.periods.forEach(p=>{
+    if(p.notes) noteRows.push([p.date,"Count note",p.notes]);
+    p.lines.forEach(l=>{ if(l.note) noteRows.push([p.date,l.name,l.note+(l.found?` (${l.found} found)`:"")]); });
+  });
+  if(noteRows.length){
+    const np=el("div",{class:"panel"},el("h2",{},"Notes from counts"));
+    noteRows.forEach(r=>np.append(el("div",{class:"evt"},el("div",{class:"t"},el("b",{},r[1]),": ",r[2],el("small",{},fmtDate(r[0],true))))));
+    box.append(np);
+  }
   box.append(el("div",{class:"btnrow"},
     el("button",{class:"btn",onclick:()=>exportItems(ss,fi,ti)},"Download item details (CSV)"),
     el("button",{class:"btn",onclick:()=>exportWeeks(ss,fi,ti)},"Download totals by week (CSV)")));
@@ -792,8 +828,8 @@ function aggregate(ss,fi,ti){
   const periods=ss.slice(fi+1,ti+1), map=new Map();
   periods.forEach(s=>s.lines.forEach(l=>{
     let a=map.get(l.itemId);
-    if(!a){ a={itemId:l.itemId,name:l.name,start:l.prev??0,received:0,lost:0,damaged:0,giveaway:0,other:0,sold:0,gross:0,end:l.counted}; map.set(l.itemId,a); }
-    a.name=l.name; a.received+=l.received||0; a.lost+=l.lost||0; a.damaged+=l.damaged||0; a.giveaway+=l.giveaway||0; a.other+=l.other||0;
+    if(!a){ a={itemId:l.itemId,name:l.name,start:l.prev??0,received:0,found:0,lost:0,damaged:0,giveaway:0,other:0,sold:0,gross:0,end:l.counted}; map.set(l.itemId,a); }
+    a.name=l.name; a.received+=l.received||0; a.found+=l.found||0; a.lost+=l.lost||0; a.damaged+=l.damaged||0; a.giveaway+=l.giveaway||0; a.other+=l.other||0;
     a.sold+=l.sold||0; a.gross=round2(a.gross+(l.gross||0)); a.end=l.counted;
   }));
   const T=f=>round2(sum(periods,p=>p[f]||0));
@@ -819,9 +855,9 @@ function csvDownload(name,rows){
   const a=el("a",{href:URL.createObjectURL(blob),download:name}); document.body.append(a); a.click(); a.remove();
 }
 function exportItems(ss,fi,ti){
-  const rows=[["Period start","Period end","Item","Price","Start count","Received","Lost","Damaged","Given away","Other","End count","Sold","Sales $"]];
+  const rows=[["Period start","Period end","Item","Price","Start count","Received","Found","Lost","Damaged","Given away","Other","End count","Sold","Sales $","Note"]];
   ss.slice(fi+1,ti+1).forEach(p=>{ const prev=ss[ss.indexOf(p)-1];
-    p.lines.forEach(l=>rows.push([prev.date,p.date,l.name,l.price,l.prev??0,l.received,l.lost,l.damaged,l.giveaway,l.other,l.counted,l.sold,l.gross])); });
+    p.lines.forEach(l=>rows.push([prev.date,p.date,l.name,l.price,l.prev??0,l.received,l.found||0,l.lost,l.damaged,l.giveaway,l.other,l.counted,l.sold,l.gross,l.note||""])); });
   csvDownload("store-items.csv",rows);
 }
 function exportWeeks(ss,fi,ti){
