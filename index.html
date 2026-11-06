@@ -721,9 +721,9 @@ function screenTeacher(){
     isUnlocked()?el("button",{class:"iconbtn",onclick:()=>{teacher.until=0;go("home");}},"Lock"):null));
   if(!isUnlocked()){ wrap.append(pinGate()); return wrap; }
   const tabs=el("div",{class:"tabs"});
-  [["history","History"],["items","Items & prices"],["settings","Settings"]].forEach(([k,l])=>
+  [["history","History"],["stock","Stock now"],["items","Items & prices"],["settings","Settings"]].forEach(([k,l])=>
     tabs.append(el("button",{class:"chip","aria-pressed":String(teacher.tab===k),onclick:()=>{teacher.tab=k;render();}},l)));
-  wrap.append(tabs, teacher.tab==="history"?tabHistory():teacher.tab==="items"?tabItems():tabSettings());
+  wrap.append(tabs, teacher.tab==="history"?tabHistory():teacher.tab==="stock"?tabStock():teacher.tab==="items"?tabItems():tabSettings());
   return wrap;
 }
 
@@ -749,6 +749,29 @@ function pinGate(){
     el("div",{class:"btnrow"},el("button",{class:"btn primary big",type:"submit"},has?"Unlock":"Save PIN")));
   return el("div",{class:"panel"},
     el("p",{},has?"History, prices and settings are for teachers only.":"This keeps students out of prices and history. Choose a PIN that students won't guess."),form);
+}
+
+/* --- Stock now: what the shelves should hold today --- */
+function tabStock(){
+  const last=lastSession(), box=el("div",{});
+  if(!last){ box.append(el("div",{class:"panel"},el("h2",{},"No count yet"),el("p",{},"Do the first count and the expected stock will show here."))); return box; }
+  const pend=pending(), items=activeItems();
+  const tbl=el("table",{class:"tbl"},el("tr",{},...["Item","Last count","Added","Out","Should have now"].map(x=>el("th",{},x))));
+  let tot=0;
+  groupItems(items).forEach(([cat,list])=>{
+    tbl.append(el("tr",{},el("td",{style:"font-weight:800;background:#F6F9FB",colspan:"5"},cat)));
+    list.forEach(i=>{
+      const ev=pend.filter(e=>e.itemId===i.id);
+      const add=sum(ev.filter(e=>e.type==="receive"),e=>e.qty), out=sum(ev.filter(e=>e.type==="writeoff"),e=>e.qty);
+      const prev=prevCount(last,i.id), now=prev+add-out; tot+=now;
+      tbl.append(el("tr",{},el("td",{},i.name),el("td",{},prev),el("td",{},add||"–"),el("td",{},out||"–"),el("td",{},el("b",{},now))));
+    });
+  });
+  tbl.append(el("tr",{class:"total"},el("td",{},"Total items"),el("td",{}),el("td",{}),el("td",{}),el("td",{},tot)));
+  box.append(el("div",{class:"panel"},el("h2",{},"What should be on the shelves"),
+    el("p",{},`The last count was ${fmtDate(last.date,true)}. This adds deliveries and subtracts lost, damaged, or given-away items logged since then. Sales aren't included until the next count, so the real number will be lower.`)),
+    el("div",{class:"scroll"},tbl));
+  return box;
 }
 
 /* --- History --- */
